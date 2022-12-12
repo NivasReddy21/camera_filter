@@ -267,9 +267,7 @@ class _CameraScreenState extends State<CameraScreenPlugin>
                   child: ValueListenableBuilder(
                       valueListenable: cameraChange,
                       builder: (context, value, Widget? c) {
-                        return cameraChange.value == false
-                            ? _buildFilterSelector()
-                            : videoRecordingWidget();
+                        return _buildFilterSelector();
                       }),
                 ),
                 Positioned(
@@ -339,29 +337,6 @@ class _CameraScreenState extends State<CameraScreenPlugin>
                           }
                         },
                       ),
-                      SizedBox(
-                        width: 5,
-                      ),
-                      ValueListenableBuilder(
-                          valueListenable: cameraChange,
-                          builder: (context, value, Widget? c) {
-                            return IconButton(
-                              icon: Icon(
-                                cameraChange.value == false
-                                    ? Icons.videocam
-                                    : Icons.camera,
-                                color: Colors.white,
-                              ),
-                              onPressed: () {
-                                if (cameraChange.value == false) {
-                                  cameraChange.value = true;
-                                  _controller.prepareForVideoRecording();
-                                } else {
-                                  cameraChange.value = false;
-                                }
-                              },
-                            );
-                          }),
                     ],
                   ),
                 ),
@@ -493,86 +468,86 @@ class _CameraScreenState extends State<CameraScreenPlugin>
   }
 
   ///video recording function
-  Widget videoRecordingWidget() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onLongPress: () async {
-          // if(controller.value ){
+  // Widget videoRecordingWidget() {
+  //   return Padding(
+  //     padding: const EdgeInsets.only(bottom: 10),
+  //     child: GestureDetector(
+  //       onLongPress: () async {
+  //         // if(controller.value ){
 
-          await _controller.prepareForVideoRecording();
-          await _controller.startVideoRecording();
-          timer();
-          controller.forward();
-          _rotationController!.forward();
-          // }
-        },
-        onLongPressEnd: (v) async {
-          t!.cancel();
-          time.value = "";
-          controller.reset();
-          _rotationController!.reset();
-          final file = await _controller.stopVideoRecording();
-          flashCheck();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => VideoPlayer(
-                      file.path,
-                      applyFilters: widget.applyFilters,
-                      onVideoDone: widget.onVideoDone,
-                      sendButtonWidget: widget.sendButtonWidget,
-                    )),
-          ).then((value) {
-            if (sp.read("flashCount") == 1) {
-              _controller.setFlashMode(FlashMode.torch);
-            }
-          });
-        },
-        child: Container(
-          width: 70,
-          height: 70,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: 10, minHeight: 10),
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                if (_showWaves) ...[
-                  Blob(
-                      color: Color(0xff0092ff),
-                      scale: _scale,
-                      rotation: _rotation),
-                  Blob(
-                      color: Color(0xff4ac7b7),
-                      scale: _scale,
-                      rotation: _rotation * 2 - 30),
-                  Blob(
-                      color: Color(0xffa4a6f6),
-                      scale: _scale,
-                      rotation: _rotation * 3 - 45),
-                ],
-                Container(
-                  constraints: BoxConstraints.expand(),
-                  child: AnimatedSwitcher(
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                          color: Color(0xffd51820),
-                          borderRadius: BorderRadius.circular(100)),
-                    ),
-                    duration: Duration(milliseconds: 300),
-                  ),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  //         await _controller.prepareForVideoRecording();
+  //         await _controller.startVideoRecording();
+  //         timer();
+  //         controller.forward();
+  //         _rotationController!.forward();
+  //         // }
+  //       },
+  //       onLongPressEnd: (v) async {
+  //         t!.cancel();
+  //         time.value = "";
+  //         controller.reset();
+  //         _rotationController!.reset();
+  //         final file = await _controller.stopVideoRecording();
+  //         flashCheck();
+  //         Navigator.push(
+  //           context,
+  //           MaterialPageRoute(
+  //               builder: (context) => VideoPlayer(
+  //                     file.path,
+  //                     applyFilters: widget.applyFilters,
+  //                     onVideoDone: widget.onVideoDone,
+  //                     sendButtonWidget: widget.sendButtonWidget,
+  //                   )),
+  //         ).then((value) {
+  //           if (sp.read("flashCount") == 1) {
+  //             _controller.setFlashMode(FlashMode.torch);
+  //           }
+  //         });
+  //       },
+  //       child: Container(
+  //         width: 70,
+  //         height: 70,
+  //         child: ConstrainedBox(
+  //           constraints: BoxConstraints(minWidth: 10, minHeight: 10),
+  //           child: Stack(
+  //             alignment: Alignment.bottomCenter,
+  //             children: [
+  //               if (_showWaves) ...[
+  //                 Blob(
+  //                     color: Color(0xff0092ff),
+  //                     scale: _scale,
+  //                     rotation: _rotation),
+  //                 Blob(
+  //                     color: Color(0xff4ac7b7),
+  //                     scale: _scale,
+  //                     rotation: _rotation * 2 - 30),
+  //                 Blob(
+  //                     color: Color(0xffa4a6f6),
+  //                     scale: _scale,
+  //                     rotation: _rotation * 3 - 45),
+  //               ],
+  //               Container(
+  //                 constraints: BoxConstraints.expand(),
+  //                 child: AnimatedSwitcher(
+  //                   child: Container(
+  //                     width: 70,
+  //                     height: 70,
+  //                     decoration: BoxDecoration(
+  //                         color: Color(0xffd51820),
+  //                         borderRadius: BorderRadius.circular(100)),
+  //                   ),
+  //                   duration: Duration(milliseconds: 300),
+  //                 ),
+  //                 decoration: BoxDecoration(
+  //                   shape: BoxShape.circle,
+  //                   color: Colors.white,
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 }

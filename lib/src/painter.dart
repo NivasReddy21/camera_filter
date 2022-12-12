@@ -1065,15 +1065,6 @@ class ImagePainterState extends State<ImagePainter> {
                     ),
                     onPressed: _openTextDialog),
                 IconButton(
-                  icon: Icon(
-                    Icons.crop_rotate,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    _cropImage();
-                  },
-                ),
-                IconButton(
                   tooltip: textDelegate.clearAllProgress,
                   icon: widget.clearAllIcon ??
                       Icon(Icons.clear, color: Colors.white),
