@@ -276,7 +276,7 @@ class FilterItem extends StatelessWidget {
               aspectRatio: 1.0,
               child: ClipOval(
                 child: Image.asset(
-                  'grey.jpeg',
+                  'assets/grey.jpeg',
                   color: color.withOpacity(0.5),
                   fit: BoxFit.fill,
                   colorBlendMode: BlendMode.hardLight,
