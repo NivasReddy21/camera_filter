@@ -350,6 +350,9 @@ class _CameraScreenState extends State<CameraScreenPlugin>
                           ),
                         ],
                       ),
+                      SizedBox(
+                        height: 20,
+                      ),
                       Row(
                         children: [
                           Expanded(
