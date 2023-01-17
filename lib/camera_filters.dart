@@ -8,8 +8,6 @@ import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:camera_filters/src/edit_image_screen.dart';
 import 'package:camera_filters/src/filters.dart';
-import 'package:camera_filters/src/widgets/circularProgress.dart';
-import 'package:camera_filters/videoPlayer.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:path_provider/path_provider.dart';
@@ -121,6 +119,10 @@ class _CameraScreenState extends State<CameraScreenPlugin>
         : widget.filterColor!.value = value;
   }
 
+  double _minAvailableZoom = 1.0;
+  double _maxAvailableZoom = 1.0;
+  double _currentZoomLevel = 1.0;
+
   @override
   void initState() {
     controller = AnimationController(
@@ -190,6 +192,11 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     Future.delayed(Duration(seconds: 2), () {
       _controller.setFlashMode(FlashMode.off);
     });
+
+    await Future.wait([
+      _controller.getMaxZoomLevel().then((value) => _maxAvailableZoom = value),
+      _controller.getMinZoomLevel().then((value) => _minAvailableZoom = value),
+    ]);
 
     setState(() {});
   }
@@ -278,64 +285,105 @@ class _CameraScreenState extends State<CameraScreenPlugin>
                 Positioned(
                   left: 10.0,
                   top: 30.0,
-                  child: Row(
+                  child: Column(
                     children: [
-                      /// icon for flash modes
-                      IconButton(
-                        onPressed: () {
-                          /// if flash count is zero flash will off
-                          if (flashCount.value == 0) {
-                            flashCount.value = 1;
-                            sp.write("flashCount", 1);
-                            _controller.setFlashMode(FlashMode.torch);
+                      Row(
+                        children: [
+                          /// icon for flash modes
+                          IconButton(
+                            onPressed: () {
+                              /// if flash count is zero flash will off
+                              if (flashCount.value == 0) {
+                                flashCount.value = 1;
+                                sp.write("flashCount", 1);
+                                _controller.setFlashMode(FlashMode.torch);
 
-                            /// if flash count is one flash will on
-                          } else if (flashCount.value == 1) {
-                            flashCount.value = 2;
-                            sp.write("flashCount", 2);
-                            _controller.setFlashMode(FlashMode.auto);
-                          }
+                                /// if flash count is one flash will on
+                              } else if (flashCount.value == 1) {
+                                flashCount.value = 2;
+                                sp.write("flashCount", 2);
+                                _controller.setFlashMode(FlashMode.auto);
+                              }
 
-                          /// if flash count is two flash will auto
-                          else {
-                            flashCount.value = 0;
-                            sp.write("flashCount", 0);
-                            _controller.setFlashMode(FlashMode.off);
-                          }
-                        },
-                        icon: ValueListenableBuilder(
-                            valueListenable: flashCount,
-                            builder: (context, value, Widget? c) {
-                              return Icon(
-                                flashCount.value == 0
-                                    ? Icons.flash_off
-                                    : flashCount.value == 1
-                                        ? Icons.flash_on
-                                        : Icons.flash_auto,
-                                color: Colors.white,
-                              );
-                            }),
+                              /// if flash count is two flash will auto
+                              else {
+                                flashCount.value = 0;
+                                sp.write("flashCount", 0);
+                                _controller.setFlashMode(FlashMode.off);
+                              }
+                            },
+                            icon: ValueListenableBuilder(
+                                valueListenable: flashCount,
+                                builder: (context, value, Widget? c) {
+                                  return Icon(
+                                    flashCount.value == 0
+                                        ? Icons.flash_off
+                                        : flashCount.value == 1
+                                            ? Icons.flash_on
+                                            : Icons.flash_auto,
+                                    color: Colors.white,
+                                  );
+                                }),
+                          ),
+                          SizedBox(
+                            width: 5,
+                          ),
+
+                          /// camera change to front or back
+                          IconButton(
+                            icon: Icon(
+                              Icons.cameraswitch,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              if (_controller.description.lensDirection ==
+                                  CameraLensDirection.front) {
+                                final CameraDescription selectedCamera =
+                                    cameras[0];
+                                _initCameraController(selectedCamera);
+                              } else {
+                                final CameraDescription selectedCamera =
+                                    cameras[1];
+                                _initCameraController(selectedCamera);
+                              }
+                            },
+                          ),
+                        ],
                       ),
-                      SizedBox(
-                        width: 5,
-                      ),
-
-                      /// camera change to front or back
-                      IconButton(
-                        icon: Icon(
-                          Icons.cameraswitch,
-                          color: Colors.white,
-                        ),
-                        onPressed: () {
-                          if (_controller.description.lensDirection ==
-                              CameraLensDirection.front) {
-                            final CameraDescription selectedCamera = cameras[0];
-                            _initCameraController(selectedCamera);
-                          } else {
-                            final CameraDescription selectedCamera = cameras[1];
-                            _initCameraController(selectedCamera);
-                          }
-                        },
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Slider(
+                              value: _currentZoomLevel,
+                              min: _minAvailableZoom,
+                              max: _maxAvailableZoom,
+                              activeColor: Colors.white,
+                              inactiveColor: Colors.white30,
+                              onChanged: (value) async {
+                                setState(() {
+                                  _currentZoomLevel = value;
+                                });
+                                await _controller.setZoomLevel(value);
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black87,
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  "${_currentZoomLevel.toStringAsFixed(1)}x",
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
