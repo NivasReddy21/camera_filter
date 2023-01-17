@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -275,8 +276,9 @@ class FilterItem extends StatelessWidget {
           : AspectRatio(
               aspectRatio: 1.0,
               child: ClipOval(
-                child: Image.asset(
-                  'assets/grey.jpeg',
+                child: CachedNetworkImage(
+                  imageUrl:
+                      'https://github.com/hamzasidd3634/camera_filter/blob/master/assets/grey.jpeg?raw=true',
                   color: color.withOpacity(0.5),
                   fit: BoxFit.fill,
                   colorBlendMode: BlendMode.hardLight,
