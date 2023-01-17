@@ -187,7 +187,11 @@ class _CameraScreenState extends State<CameraScreenPlugin>
       cameras[0],
       ResolutionPreset.high,
     );
-    _initializeControllerFuture = _controller.initialize();
+
+    await _controller.initialize();
+
+    _initializeControllerFuture =
+        Future.delayed(const Duration(seconds: 1), () {});
 
     Future.delayed(Duration(seconds: 2), () {
       _controller.setFlashMode(FlashMode.off);
