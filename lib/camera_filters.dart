@@ -88,8 +88,6 @@ class _CameraScreenState extends State<CameraScreenPlugin>
   double _rotation = 0;
   double _scale = 0.85;
 
-  bool get _showWaves => !controller.isDismissed;
-
   void _updateRotation() {
     _rotation = (_rotationController!.value * 2) * pi;
     print("_rotation is $_rotation");
@@ -118,10 +116,6 @@ class _CameraScreenState extends State<CameraScreenPlugin>
         ? _filterColor.value = value
         : widget.filterColor!.value = value;
   }
-
-  double _minAvailableZoom = 1.0;
-  double _maxAvailableZoom = 1.0;
-  double _currentZoomLevel = 1.0;
 
   @override
   void initState() {
@@ -196,11 +190,6 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     Future.delayed(Duration(seconds: 2), () {
       _controller.setFlashMode(FlashMode.off);
     });
-
-    await Future.wait([
-      _controller.getMaxZoomLevel().then((value) => _maxAvailableZoom = value),
-      _controller.getMinZoomLevel().then((value) => _minAvailableZoom = value),
-    ]);
 
     setState(() {});
   }
@@ -362,66 +351,46 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     }
   }
 
-  /// function will call when user tap on picture button
   void onTakePictureButtonPressed(context) {
-    takePicture(context).then((String? filePath) async {
-      if (_controller.value.isInitialized) {
-        if (filePath != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
+    takePicture(context).then(
+      (String? filePath) async {
+        if (_controller.value.isInitialized) {
+          if (filePath != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
                 builder: (context) => EditImageScreen(
-                      path: filePath,
-                      applyFilters: widget.applyFilters,
-                      sendButtonWidget: widget.sendButtonWidget,
-                      filter: ColorFilter.mode(
-                          widget.filterColor == null
-                              ? _filterColor.value
-                              : widget.filterColor!.value,
-                          BlendMode.softLight),
-                      onDone: widget.onDone,
-                    )),
-          ).then((value) {
-            if (sp.read("flashCount") == 1) {
-              _controller.setFlashMode(FlashMode.torch);
-            }
-          });
-          flashCheck();
+                  path: filePath,
+                  applyFilters: widget.applyFilters,
+                  sendButtonWidget: widget.sendButtonWidget,
+                  filter: ColorFilter.mode(
+                      widget.filterColor == null
+                          ? _filterColor.value
+                          : widget.filterColor!.value,
+                      BlendMode.softLight),
+                  onDone: widget.onDone,
+                ),
+              ),
+            ).then(
+              (value) {
+                if (sp.read("flashCount") == 1) {
+                  _controller.setFlashMode(FlashMode.torch);
+                }
+              },
+            );
+            flashCheck();
+          }
         }
-      }
-    });
+      },
+    );
   }
 
-  /// compress the picture from bigger size to smaller
-  // Future<String> compressFile(File file, {takePicture = false}) async {
-  //   final File compressedFile = await FlutterNativeImage.compressImage(
-  //     file.path,
-  //     quality: 70,
-  //   );
-  //   final List<int> imageBytes = await file.readAsBytes();
-  //
-  //   imglib.Image? originalImage = imglib.decodeImage(imageBytes);
-  //
-  //   if (_controller.description.lensDirection == CameraLensDirection.front) {
-  //     originalImage = imglib.flipHorizontal(originalImage!);
-  //   }
-  //
-  //   final File files = File(compressedFile.path);
-  //
-  //   final File fixedFile = await files.writeAsBytes(
-  //     imglib.encodePng(originalImage!),
-  //     flush: true,
-  //   );
-  //   return fixedFile.path;
-  // }
-
-  /// function will call when user take picture
   Future<String> takePicture(context) async {
     if (!_controller.value.isInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: camera is not initialized')));
     }
-    final String dirPath = getTemporaryDirectory().toString();
+    final String dirPath = getApplicationDocumentsDirectory.toString();
     String filePath = '$dirPath/${timestamp()}.jpg';
 
     try {
@@ -435,10 +404,8 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     return filePath;
   }
 
-  /// timestamp for image creation date
   String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
 
-  /// widget will build the filter selector
   Widget _buildFilterSelector() {
     return FilterSelector(
       onFilterChanged: _onFilterChanged,
@@ -457,19 +424,15 @@ class _CameraScreenState extends State<CameraScreenPlugin>
 
   /// function initialize camera controller
   Future _initCameraController(CameraDescription cameraDescription) async {
-    /// 1
-    _controller = CameraController(cameraDescription, ResolutionPreset.high);
+    _controller =
+        CameraController(cameraDescription, ResolutionPreset.veryHigh);
 
-    /// 2
-    /// If the controller is updated then update the UI.
     _controller.addListener(() {
-      /// 3
       if (_controller.value.hasError) {
         print('Camera error ${_controller.value.errorDescription}');
       }
     });
 
-    /// 4
     try {
       await _controller.initialize();
     } on CameraException catch (e) {
@@ -477,88 +440,4 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     }
     setState(() {});
   }
-
-  ///video recording function
-  // Widget videoRecordingWidget() {
-  //   return Padding(
-  //     padding: const EdgeInsets.only(bottom: 10),
-  //     child: GestureDetector(
-  //       onLongPress: () async {
-  //         // if(controller.value ){
-
-  //         await _controller.prepareForVideoRecording();
-  //         await _controller.startVideoRecording();
-  //         timer();
-  //         controller.forward();
-  //         _rotationController!.forward();
-  //         // }
-  //       },
-  //       onLongPressEnd: (v) async {
-  //         t!.cancel();
-  //         time.value = "";
-  //         controller.reset();
-  //         _rotationController!.reset();
-  //         final file = await _controller.stopVideoRecording();
-  //         flashCheck();
-  //         Navigator.push(
-  //           context,
-  //           MaterialPageRoute(
-  //               builder: (context) => VideoPlayer(
-  //                     file.path,
-  //                     applyFilters: widget.applyFilters,
-  //                     onVideoDone: widget.onVideoDone,
-  //                     sendButtonWidget: widget.sendButtonWidget,
-  //                   )),
-  //         ).then((value) {
-  //           if (sp.read("flashCount") == 1) {
-  //             _controller.setFlashMode(FlashMode.torch);
-  //           }
-  //         });
-  //       },
-  //       child: Container(
-  //         width: 70,
-  //         height: 70,
-  //         child: ConstrainedBox(
-  //           constraints: BoxConstraints(minWidth: 10, minHeight: 10),
-  //           child: Stack(
-  //             alignment: Alignment.bottomCenter,
-  //             children: [
-  //               if (_showWaves) ...[
-  //                 Blob(
-  //                     color: Color(0xff0092ff),
-  //                     scale: _scale,
-  //                     rotation: _rotation),
-  //                 Blob(
-  //                     color: Color(0xff4ac7b7),
-  //                     scale: _scale,
-  //                     rotation: _rotation * 2 - 30),
-  //                 Blob(
-  //                     color: Color(0xffa4a6f6),
-  //                     scale: _scale,
-  //                     rotation: _rotation * 3 - 45),
-  //               ],
-  //               Container(
-  //                 constraints: BoxConstraints.expand(),
-  //                 child: AnimatedSwitcher(
-  //                   child: Container(
-  //                     width: 70,
-  //                     height: 70,
-  //                     decoration: BoxDecoration(
-  //                         color: Color(0xffd51820),
-  //                         borderRadius: BorderRadius.circular(100)),
-  //                   ),
-  //                   duration: Duration(milliseconds: 300),
-  //                 ),
-  //                 decoration: BoxDecoration(
-  //                   shape: BoxShape.circle,
-  //                   color: Colors.white,
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
 }
