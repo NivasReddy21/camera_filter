@@ -88,8 +88,6 @@ class _CameraScreenState extends State<CameraScreenPlugin>
   double _rotation = 0;
   double _scale = 0.85;
 
-  bool get _showWaves => !controller.isDismissed;
-
   void _updateRotation() {
     _rotation = (_rotationController!.value * 2) * pi;
     print("_rotation is $_rotation");
@@ -118,10 +116,6 @@ class _CameraScreenState extends State<CameraScreenPlugin>
         ? _filterColor.value = value
         : widget.filterColor!.value = value;
   }
-
-  double _minAvailableZoom = 1.0;
-  double _maxAvailableZoom = 1.0;
-  double _currentZoomLevel = 1.0;
 
   @override
   void initState() {
@@ -185,7 +179,7 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     ///put camera in camera controller
     _controller = CameraController(
       cameras[0],
-      ResolutionPreset.high,
+      ResolutionPreset.veryHigh,
     );
 
     await _controller.initialize();
@@ -196,11 +190,6 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     Future.delayed(Duration(seconds: 2), () {
       _controller.setFlashMode(FlashMode.off);
     });
-
-    await Future.wait([
-      _controller.getMaxZoomLevel().then((value) => _maxAvailableZoom = value),
-      _controller.getMinZoomLevel().then((value) => _minAvailableZoom = value),
-    ]);
 
     setState(() {});
   }

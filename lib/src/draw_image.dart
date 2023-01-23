@@ -57,7 +57,7 @@ class DrawImage extends CustomPainter {
       paintImage(
         canvas: canvas,
         image: image!,
-        filterQuality: FilterQuality.high,
+        filterQuality: FilterQuality.medium,
         rect: Rect.fromPoints(
           const Offset(0, 0),
           Offset(size.width, size.height),
