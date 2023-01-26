@@ -84,6 +84,10 @@ class _CameraScreenState extends State<CameraScreenPlugin>
   /// bool to change picture to video or video to picture
   ValueNotifier<bool> cameraChange = ValueNotifier(false);
 
+  double _minAvailableZoom = 1.0;
+  double _maxAvailableZoom = 1.0;
+  double _currentZoomLevel = 1.0;
+
   AnimationController? _rotationController;
   double _rotation = 0;
   double _scale = 0.85;
@@ -190,6 +194,11 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     Future.delayed(Duration(seconds: 2), () {
       _controller.setFlashMode(FlashMode.off);
     });
+
+    await Future.wait([
+      _controller.getMaxZoomLevel().then((value) => _maxAvailableZoom = value),
+      _controller.getMinZoomLevel().then((value) => _minAvailableZoom = value),
+    ]);
 
     setState(() {});
   }
@@ -340,6 +349,51 @@ class _CameraScreenState extends State<CameraScreenPlugin>
                     ],
                   ),
                 ),
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RotatedBox(
+                          quarterTurns: 3,
+                          child: Container(
+                            height: 30,
+                            child: Slider(
+                              value: _currentZoomLevel,
+                              min: _minAvailableZoom,
+                              max: _maxAvailableZoom,
+                              activeColor: Colors.white,
+                              inactiveColor: Colors.white30,
+                              onChanged: (value) async {
+                                setState(() {
+                                  _currentZoomLevel = value;
+                                });
+                                await _controller.setZoomLevel(value);
+                              },
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                _currentZoomLevel.toStringAsFixed(1) + 'x',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               ],
             ),
     );
