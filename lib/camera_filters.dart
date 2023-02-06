@@ -3,14 +3,17 @@
 library camera_filters;
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:camera_filters/src/edit_image_screen.dart';
 import 'package:camera_filters/src/filters.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_native_image/flutter_native_image.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as imglib;
 
 class CameraScreenPlugin extends StatefulWidget {
   /// this function will return the path of edited picture
@@ -216,185 +219,213 @@ class _CameraScreenState extends State<CameraScreenPlugin>
       color: Colors.black,
       child: _initializeControllerFuture == null
           ? Center(child: CircularProgressIndicator())
-          : Stack(
-              children: [
-                Positioned.fill(
-                  child: FutureBuilder<void>(
-                    future: _initializeControllerFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.done) {
-                        /// If the Future is complete, display the preview.
-                        return ValueListenableBuilder(
-                            valueListenable: cameraChange,
-                            builder: (context, value, Widget? c) {
-                              return cameraChange.value == false
-                                  ? ValueListenableBuilder(
-                                      valueListenable:
-                                          widget.filterColor ?? _filterColor,
-                                      builder: (context, value, child) {
-                                        return ColorFiltered(
-                                          colorFilter: ColorFilter.mode(
-                                              widget.filterColor == null
-                                                  ? _filterColor.value
-                                                  : widget.filterColor!.value,
-                                              BlendMode.softLight),
-                                          child: CameraPreview(_controller),
-                                        );
-                                      })
-                                  : CameraPreview(_controller);
-                            });
-                      } else {
-                        /// Otherwise, display a loading indicator.
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                    },
+          : GestureDetector(
+              onScaleUpdate: (details) async {
+                print(details.scale);
+
+                if (details.scale == 1.0 ||
+                    _currentZoomLevel * details.scale < _minAvailableZoom ||
+                    _currentZoomLevel * details.scale > _maxAvailableZoom) {
+                  return;
+                }
+
+                setState(() {
+                  if (details.scale > 1) {
+                    _currentZoomLevel = _currentZoomLevel +
+                        _minAvailableZoom *
+                            (_minAvailableZoom / _maxAvailableZoom);
+                  } else {
+                    _currentZoomLevel = _currentZoomLevel -
+                        _minAvailableZoom *
+                            (_minAvailableZoom / _maxAvailableZoom);
+                  }
+                  // _currentZoomLevel *= details.scale;
+                });
+                await _controller.setZoomLevel(_currentZoomLevel);
+              },
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: FutureBuilder<void>(
+                      future: _initializeControllerFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.done) {
+                          /// If the Future is complete, display the preview.
+                          return ValueListenableBuilder(
+                              valueListenable: cameraChange,
+                              builder: (context, value, Widget? c) {
+                                return cameraChange.value == false
+                                    ? ValueListenableBuilder(
+                                        valueListenable:
+                                            widget.filterColor ?? _filterColor,
+                                        builder: (context, value, child) {
+                                          return ColorFiltered(
+                                            colorFilter: ColorFilter.mode(
+                                                widget.filterColor == null
+                                                    ? _filterColor.value
+                                                    : widget.filterColor!.value,
+                                                BlendMode.softLight),
+                                            child: CameraPreview(_controller),
+                                          );
+                                        })
+                                    : CameraPreview(_controller);
+                              });
+                        } else {
+                          /// Otherwise, display a loading indicator.
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                      },
+                    ),
                   ),
-                ),
-                Positioned(
-                  top: 50.0,
-                  right: 10.0,
-                  child: ValueListenableBuilder(
-                      valueListenable: cameraChange,
-                      builder: (context, value, Widget? c) {
-                        return cameraChange.value == false
-                            ? Container()
-                            : Text(
-                                time.value == ""
-                                    ? ""
-                                    : formatHHMMSS(int.parse(time.value)),
-                                style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold),
-                              );
-                      }),
-                ),
-                Positioned(
-                  left: 0.0,
-                  right: 0.0,
-                  bottom: 0.0,
-                  child: ValueListenableBuilder(
-                      valueListenable: cameraChange,
-                      builder: (context, value, Widget? c) {
-                        return _buildFilterSelector();
-                      }),
-                ),
-                Positioned(
-                  right: 10.0,
-                  top: 30.0,
-                  child: widget.profileIconWidget ?? Container(),
-                ),
-                Positioned(
-                  left: 10.0,
-                  top: 30.0,
-                  child: Row(
-                    children: [
-                      /// icon for flash modes
-                      IconButton(
-                        onPressed: () {
-                          /// if flash count is zero flash will off
-                          if (flashCount.value == 0) {
-                            flashCount.value = 1;
-                            sp.write("flashCount", 1);
-                            _controller.setFlashMode(FlashMode.torch);
-
-                            /// if flash count is one flash will on
-                          } else if (flashCount.value == 1) {
-                            flashCount.value = 2;
-                            sp.write("flashCount", 2);
-                            _controller.setFlashMode(FlashMode.auto);
-                          }
-
-                          /// if flash count is two flash will auto
-                          else {
-                            flashCount.value = 0;
-                            sp.write("flashCount", 0);
-                            _controller.setFlashMode(FlashMode.off);
-                          }
-                        },
-                        icon: ValueListenableBuilder(
-                            valueListenable: flashCount,
-                            builder: (context, value, Widget? c) {
-                              return Icon(
-                                flashCount.value == 0
-                                    ? Icons.flash_off
-                                    : flashCount.value == 1
-                                        ? Icons.flash_on
-                                        : Icons.flash_auto,
-                                color: Colors.white,
-                              );
-                            }),
-                      ),
-                      SizedBox(
-                        width: 5,
-                      ),
-
-                      /// camera change to front or back
-                      IconButton(
-                        icon: Icon(
-                          Icons.cameraswitch,
-                          color: Colors.white,
-                        ),
-                        onPressed: () {
-                          if (_controller.description.lensDirection ==
-                              CameraLensDirection.front) {
-                            final CameraDescription selectedCamera = cameras[0];
-                            _initCameraController(selectedCamera);
-                          } else {
-                            final CameraDescription selectedCamera = cameras[1];
-                            _initCameraController(selectedCamera);
-                          }
-                        },
-                      ),
-                    ],
+                  Positioned(
+                    top: 50.0,
+                    right: 10.0,
+                    child: ValueListenableBuilder(
+                        valueListenable: cameraChange,
+                        builder: (context, value, Widget? c) {
+                          return cameraChange.value == false
+                              ? Container()
+                              : Text(
+                                  time.value == ""
+                                      ? ""
+                                      : formatHHMMSS(int.parse(time.value)),
+                                  style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold),
+                                );
+                        }),
                   ),
-                ),
-                Positioned.fill(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                  Positioned(
+                    left: 0.0,
+                    right: 0.0,
+                    bottom: 0.0,
+                    child: ValueListenableBuilder(
+                        valueListenable: cameraChange,
+                        builder: (context, value, Widget? c) {
+                          return _buildFilterSelector();
+                        }),
+                  ),
+                  Positioned(
+                    right: 10.0,
+                    top: 30.0,
+                    child: widget.profileIconWidget ?? Container(),
+                  ),
+                  Positioned(
+                    left: 10.0,
+                    top: 30.0,
+                    child: Row(
                       children: [
-                        RotatedBox(
-                          quarterTurns: 3,
-                          child: Container(
-                            height: 30,
-                            child: Slider(
-                              value: _currentZoomLevel,
-                              min: _minAvailableZoom,
-                              max: _maxAvailableZoom,
-                              activeColor: Colors.white,
-                              inactiveColor: Colors.white30,
-                              onChanged: (value) async {
-                                setState(() {
-                                  _currentZoomLevel = value;
-                                });
-                                await _controller.setZoomLevel(value);
-                              },
-                            ),
-                          ),
+                        /// icon for flash modes
+                        IconButton(
+                          onPressed: () {
+                            /// if flash count is zero flash will off
+                            if (flashCount.value == 0) {
+                              flashCount.value = 1;
+                              sp.write("flashCount", 1);
+                              _controller.setFlashMode(FlashMode.torch);
+
+                              /// if flash count is one flash will on
+                            } else if (flashCount.value == 1) {
+                              flashCount.value = 2;
+                              sp.write("flashCount", 2);
+                              _controller.setFlashMode(FlashMode.auto);
+                            }
+
+                            /// if flash count is two flash will auto
+                            else {
+                              flashCount.value = 0;
+                              sp.write("flashCount", 0);
+                              _controller.setFlashMode(FlashMode.off);
+                            }
+                          },
+                          icon: ValueListenableBuilder(
+                              valueListenable: flashCount,
+                              builder: (context, value, Widget? c) {
+                                return Icon(
+                                  flashCount.value == 0
+                                      ? Icons.flash_off
+                                      : flashCount.value == 1
+                                          ? Icons.flash_on
+                                          : Icons.flash_auto,
+                                  color: Colors.white,
+                                );
+                              }),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black87,
-                              borderRadius: BorderRadius.circular(10.0),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                _currentZoomLevel.toStringAsFixed(1) + 'x',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
+                        SizedBox(
+                          width: 5,
+                        ),
+
+                        /// camera change to front or back
+                        IconButton(
+                          icon: Icon(
+                            Icons.cameraswitch,
+                            color: Colors.white,
                           ),
+                          onPressed: () {
+                            if (_controller.description.lensDirection ==
+                                CameraLensDirection.front) {
+                              final CameraDescription selectedCamera =
+                                  cameras[0];
+                              _initCameraController(selectedCamera);
+                            } else {
+                              final CameraDescription selectedCamera =
+                                  cameras[1];
+                              _initCameraController(selectedCamera);
+                            }
+                          },
                         ),
                       ],
                     ),
                   ),
-                )
-              ],
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          RotatedBox(
+                            quarterTurns: 3,
+                            child: Container(
+                              height: 30,
+                              child: Slider(
+                                value: _currentZoomLevel,
+                                min: _minAvailableZoom,
+                                max: _maxAvailableZoom,
+                                activeColor: Colors.white,
+                                inactiveColor: Colors.white30,
+                                onChanged: (value) async {
+                                  setState(() {
+                                    _currentZoomLevel = value;
+                                  });
+                                  await _controller.setZoomLevel(value);
+                                },
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black87,
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  _currentZoomLevel.toStringAsFixed(1) + 'x',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                ],
+              ),
             ),
     );
   }
@@ -435,28 +466,23 @@ class _CameraScreenState extends State<CameraScreenPlugin>
     });
   }
 
-  /// compress the picture from bigger size to smaller
-  // Future<String> compressFile(File file, {takePicture = false}) async {
-  //   final File compressedFile = await FlutterNativeImage.compressImage(
-  //     file.path,
-  //     quality: 70,
-  //   );
-  //   final List<int> imageBytes = await file.readAsBytes();
-  //
-  //   imglib.Image? originalImage = imglib.decodeImage(imageBytes);
-  //
-  //   if (_controller.description.lensDirection == CameraLensDirection.front) {
-  //     originalImage = imglib.flipHorizontal(originalImage!);
-  //   }
-  //
-  //   final File files = File(compressedFile.path);
-  //
-  //   final File fixedFile = await files.writeAsBytes(
-  //     imglib.encodePng(originalImage!),
-  //     flush: true,
-  //   );
-  //   return fixedFile.path;
-  // }
+  Future<String> compressFile(File file, {takePicture = false}) async {
+    final List<int> imageBytes = await file.readAsBytes();
+
+    imglib.Image? originalImage = imglib.decodeImage(imageBytes);
+
+    if (_controller.description.lensDirection == CameraLensDirection.front) {
+      originalImage = imglib.flipHorizontal(originalImage!);
+    }
+
+    final File files = File(file.path);
+
+    final File fixedFile = await files.writeAsBytes(
+      imglib.encodeJpg(originalImage!),
+      flush: true,
+    );
+    return fixedFile.path;
+  }
 
   /// function will call when user take picture
   Future<String> takePicture(context) async {
@@ -469,7 +495,7 @@ class _CameraScreenState extends State<CameraScreenPlugin>
 
     try {
       await _controller.takePicture().then((file) async {
-        filePath = file.path;
+        filePath = await compressFile(File(file.path));
       });
     } on CameraException catch (e) {
       ScaffoldMessenger.of(context)
@@ -501,7 +527,8 @@ class _CameraScreenState extends State<CameraScreenPlugin>
   /// function initialize camera controller
   Future _initCameraController(CameraDescription cameraDescription) async {
     /// 1
-    _controller = CameraController(cameraDescription, ResolutionPreset.high);
+    _controller =
+        CameraController(cameraDescription, ResolutionPreset.veryHigh);
 
     /// 2
     /// If the controller is updated then update the UI.
